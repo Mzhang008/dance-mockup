@@ -16,6 +16,7 @@ const authRoutes = require('./routes/auth');
 const paymentRoutes = require('./routes/payments');
 const calendarRoutes = require('./routes/calendar');
 const classRoutes = require('./routes/classes');
+const packageRoutes = require('./routes/packages');
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/payments', paymentLimiter, paymentRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/classes', classRoutes);
+app.use('/api/packages', paymentLimiter, packageRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/api/ready', async (req, res) => {

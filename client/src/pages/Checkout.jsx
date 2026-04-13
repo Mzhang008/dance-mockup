@@ -155,12 +155,36 @@ function SquarePaymentForm({ selectedClass, onSuccess, onCancel }) {
   );
 }
 
-function ClassList({ onSelect }) {
+function ClassList({ onSelect, onRedeemSuccess }) {
   const [classes, setClasses] = useState([]);
+  const [packages, setPackages] = useState([]);
+  const [redeemingId, setRedeemingId] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     api.get('/classes').then(({ data }) => setClasses(data)).catch(() => {});
+    api.get('/packages/me').then(({ data }) => setPackages(data)).catch(() => {});
   }, []);
+
+  const usablePackages = packages.filter(
+    (p) =>
+      p.status === 'active' &&
+      ((p.type === 'punchcard' && p.creditsRemaining > 0) ||
+        (p.type === 'membership' && new Date(p.expiresAt) > new Date()))
+  );
+
+  const handleRedeem = async (cls) => {
+    setRedeemingId(cls._id);
+    setError('');
+    try {
+      await api.post('/payments/redeem-package', { classId: cls._id });
+      onRedeemSuccess();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Redemption failed');
+    } finally {
+      setRedeemingId(null);
+    }
+  };
 
   if (!classes.length) {
     return (
@@ -173,7 +197,13 @@ function ClassList({ onSelect }) {
 
   return (
     <div>
-      <h3 style={{ marginBottom: 32 }}>Available Classes</h3>
+      <h3 style={{ marginBottom: 16 }}>Available Classes</h3>
+      {usablePackages.length > 0 && (
+        <p style={{ marginBottom: 24, fontSize: '0.875rem', color: 'var(--gray-700)' }}>
+          You have {usablePackages.length} active package{usablePackages.length > 1 ? 's' : ''} — redeem instead of paying.
+        </p>
+      )}
+      {error && <p className="payment-error">{error}</p>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         {classes.map((c) => (
           <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
@@ -188,9 +218,21 @@ function ClassList({ onSelect }) {
               <div style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: 8 }}>
                 ${c.price}
               </div>
-              <button className="btn btn-primary" style={{ padding: '12px 24px' }} onClick={() => onSelect(c)}>
-                Book
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button className="btn btn-primary" style={{ padding: '10px 20px', fontSize: '0.75rem' }} onClick={() => onSelect(c)}>
+                  Pay
+                </button>
+                {usablePackages.length > 0 && (
+                  <button
+                    className="btn btn-outline"
+                    style={{ padding: '10px 20px', fontSize: '0.75rem' }}
+                    onClick={() => handleRedeem(c)}
+                    disabled={redeemingId === c._id}
+                  >
+                    {redeemingId === c._id ? '...' : 'Redeem'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -250,7 +292,10 @@ export default function Checkout() {
               </div>
             ) : (
               <div className="card">
-                <ClassList onSelect={setSelectedClass} />
+                <ClassList
+                  onSelect={setSelectedClass}
+                  onRedeemSuccess={() => setSuccess({ redeemed: true })}
+                />
               </div>
             )}
           </div>

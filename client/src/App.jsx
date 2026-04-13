@@ -7,6 +7,7 @@ import Gallery from './pages/Gallery';
 import Teachers from './pages/Teachers';
 import Schedule from './pages/Schedule';
 import Checkout from './pages/Checkout';
+import Packages from './pages/Packages';
 import Contact from './pages/Contact';
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/packages" element={<Packages />} />
             <Route path="/contact" element={<Contact />} />
           </Routes>
         </ErrorBoundary>

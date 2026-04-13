@@ -8,6 +8,7 @@ const validate = require('../middleware/validate');
 const { asyncHandler } = require('../middleware/error');
 const Booking = require('../models/Booking');
 const Class = require('../models/Class');
+const UserPackage = require('../models/UserPackage');
 const logger = require('../config/logger');
 
 const router = express.Router();
@@ -91,6 +92,75 @@ router.post(
       logger.error({ err, bookingId: booking._id }, 'payment failed');
       return res.status(502).json({ error: detail });
     }
+  })
+);
+
+// POST /api/payments/redeem-package — book a class using an active user package
+router.post(
+  '/redeem-package',
+  auth,
+  [body('classId').custom((v) => mongoose.isValidObjectId(v))],
+  validate,
+  asyncHandler(async (req, res) => {
+    const { classId } = req.body;
+
+    // Reserve seat atomically
+    const reserved = await Class.findOneAndUpdate(
+      { _id: classId, active: true, $expr: { $lt: ['$enrolled', '$capacity'] } },
+      { $inc: { enrolled: 1 } },
+      { new: true }
+    );
+    if (!reserved) {
+      const exists = await Class.exists({ _id: classId });
+      return res
+        .status(exists ? 400 : 404)
+        .json({ error: exists ? 'Class is full' : 'Class not found' });
+    }
+
+    // Find a usable package owned by the user that covers this class style
+    const candidates = await UserPackage.find({
+      user: req.user._id,
+      status: 'active',
+    }).populate('package');
+
+    const usable = candidates.find((up) => {
+      if (!up.isUsable()) return false;
+      const allowed = up.package?.allowedStyles || [];
+      return allowed.length === 0 || allowed.includes(reserved.style);
+    });
+
+    if (!usable) {
+      await Class.findByIdAndUpdate(classId, { $inc: { enrolled: -1 } });
+      return res.status(402).json({ error: 'No active package available for this class' });
+    }
+
+    // Atomically consume a credit (punchcard) — guards against double-spend
+    if (usable.type === 'punchcard') {
+      const consumed = await UserPackage.findOneAndUpdate(
+        { _id: usable._id, status: 'active', creditsRemaining: { $gt: 0 } },
+        { $inc: { creditsRemaining: -1 } },
+        { new: true }
+      );
+      if (!consumed) {
+        await Class.findByIdAndUpdate(classId, { $inc: { enrolled: -1 } });
+        return res.status(402).json({ error: 'Package depleted' });
+      }
+      if (consumed.creditsRemaining === 0) {
+        consumed.status = 'depleted';
+        await consumed.save();
+      }
+    }
+
+    const booking = await Booking.create({
+      user: req.user._id,
+      class: classId,
+      paymentMethod: 'package',
+      userPackage: usable._id,
+      paymentStatus: 'paid',
+    });
+
+    logger.info({ userId: req.user._id, classId, packageId: usable._id }, 'class redeemed via package');
+    res.status(201).json({ success: true, booking });
   })
 );
 
