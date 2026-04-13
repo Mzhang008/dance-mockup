@@ -10,9 +10,6 @@ const classRoutes = require('./routes/classes');
 
 const app = express();
 
-// Stripe webhook needs raw body — mount before JSON parser
-app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
-
 app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 

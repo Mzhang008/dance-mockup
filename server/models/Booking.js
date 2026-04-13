@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const bookingSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
-  stripeSessionId: { type: String },
+  squarePaymentId: { type: String },
   paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });

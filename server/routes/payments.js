@@ -1,73 +1,64 @@
 const express = require('express');
-const stripe = require('../config/stripe');
+const crypto = require('crypto');
+const { squareClient, locationId } = require('../config/square');
 const auth = require('../middleware/auth');
 const Booking = require('../models/Booking');
 const Class = require('../models/Class');
 const router = express.Router();
 
-// POST /api/payments/create-checkout-session
-router.post('/create-checkout-session', auth, async (req, res) => {
+// Serialize BigInt fields returned by Square SDK
+const toJSON = (obj) =>
+  JSON.parse(JSON.stringify(obj, (_, v) => (typeof v === 'bigint' ? v.toString() : v)));
+
+// POST /api/payments/process-payment
+router.post('/process-payment', auth, async (req, res) => {
   try {
-    const { classId } = req.body;
+    const { sourceId, classId } = req.body;
+    if (!sourceId || !classId) {
+      return res.status(400).json({ error: 'sourceId and classId required' });
+    }
+
     const danceClass = await Class.findById(classId).populate('teacher');
     if (!danceClass) return res.status(404).json({ error: 'Class not found' });
     if (danceClass.enrolled >= danceClass.capacity) {
       return res.status(400).json({ error: 'Class is full' });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      customer_email: req.user.email,
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: danceClass.title,
-            description: `${danceClass.style} class with ${danceClass.teacher?.name || 'TBA'}`,
-          },
-          unit_amount: Math.round(danceClass.price * 100),
-        },
-        quantity: 1,
-      }],
-      metadata: { classId, userId: req.user._id.toString() },
-      success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`,
-    });
-
-    await Booking.create({
+    const booking = await Booking.create({
       user: req.user._id,
       class: classId,
-      stripeSessionId: session.id,
+      paymentStatus: 'pending',
     });
 
-    res.json({ url: session.url });
+    const { result } = await squareClient.paymentsApi.createPayment({
+      sourceId,
+      idempotencyKey: crypto.randomUUID(),
+      amountMoney: {
+        amount: BigInt(Math.round(danceClass.price * 100)),
+        currency: 'USD',
+      },
+      locationId,
+      note: `${danceClass.title} — ${req.user.email}`,
+      referenceId: booking._id.toString(),
+      buyerEmailAddress: req.user.email,
+    });
+
+    const status = result.payment?.status;
+    if (status === 'COMPLETED' || status === 'APPROVED') {
+      booking.paymentStatus = 'paid';
+      booking.squarePaymentId = result.payment.id;
+      await booking.save();
+      await Class.findByIdAndUpdate(classId, { $inc: { enrolled: 1 } });
+      return res.json({ success: true, payment: toJSON(result.payment) });
+    }
+
+    booking.paymentStatus = 'failed';
+    await booking.save();
+    res.status(402).json({ error: 'Payment not completed', payment: toJSON(result.payment) });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const detail = err?.errors?.[0]?.detail || err.message;
+    res.status(500).json({ error: detail });
   }
-});
-
-// POST /api/payments/webhook
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
-  }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    await Booking.findOneAndUpdate(
-      { stripeSessionId: session.id },
-      { paymentStatus: 'paid' }
-    );
-    await Class.findByIdAndUpdate(session.metadata.classId, { $inc: { enrolled: 1 } });
-  }
-
-  res.json({ received: true });
 });
 
 module.exports = router;
