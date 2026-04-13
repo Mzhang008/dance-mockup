@@ -1,10 +1,19 @@
 const express = require('express');
+const { query } = require('express-validator');
 const { calendar } = require('../config/google');
+const validate = require('../middleware/validate');
+const { asyncHandler } = require('../middleware/error');
 const router = express.Router();
 
 // GET /api/calendar/events
-router.get('/events', async (req, res) => {
-  try {
+router.get(
+  '/events',
+  [
+    query('timeMin').optional().isISO8601(),
+    query('timeMax').optional().isISO8601(),
+  ],
+  validate,
+  asyncHandler(async (req, res) => {
     const { timeMin, timeMax } = req.query;
     const response = await calendar.events.list({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
@@ -14,7 +23,7 @@ router.get('/events', async (req, res) => {
       orderBy: 'startTime',
     });
 
-    const events = response.data.items.map((event) => ({
+    const events = (response.data.items || []).map((event) => ({
       id: event.id,
       title: event.summary,
       description: event.description,
@@ -24,9 +33,7 @@ router.get('/events', async (req, res) => {
     }));
 
     res.json(events);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  })
+);
 
 module.exports = router;

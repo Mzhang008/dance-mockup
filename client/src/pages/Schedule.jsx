@@ -14,37 +14,53 @@ function formatTime(isoStr) {
 }
 
 export default function Schedule() {
-  const [events, setEvents] = useState(FALLBACK_EVENTS);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     api.get('/calendar/events')
-      .then(({ data }) => { if (data.length) setEvents(data); })
-      .catch(() => {});
+      .then(({ data }) => {
+        if (cancelled) return;
+        setEvents(data.length ? data : FALLBACK_EVENTS);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.response?.data?.error || 'Could not load schedule');
+        setEvents(FALLBACK_EVENTS);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   return (
     <section className="section">
       <div className="container">
         <h2 className="section-title">Class Schedule</h2>
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: 40 }}>
+        <p style={{ textAlign: 'center', color: 'var(--gray-500)', marginBottom: 40 }}>
           Synced with Google Calendar — always up to date
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {events.map((evt) => (
-            <div className="card schedule-event" key={evt.id}>
-              <div className="schedule-event-time">
-                <div>{formatTime(evt.start)}</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  to {new Date(evt.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+        {loading && <p style={{ textAlign: 'center' }}>Loading...</p>}
+        {error && <p style={{ textAlign: 'center', color: '#b00020' }}>{error}</p>}
+        {!loading && (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {events.map((evt) => (
+              <div className="schedule-event" key={evt.id}>
+                <div className="schedule-event-time">
+                  <div>{formatTime(evt.start)}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: 4 }}>
+                    to {new Date(evt.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  </div>
+                </div>
+                <div>
+                  <h3>{evt.title}</h3>
+                  <p>{evt.description}</p>
                 </div>
               </div>
-              <div>
-                <h3>{evt.title}</h3>
-                <p style={{ color: 'var(--text-muted)' }}>{evt.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

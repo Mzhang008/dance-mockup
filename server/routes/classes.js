@@ -1,40 +1,46 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const { query, param } = require('express-validator');
 const Class = require('../models/Class');
 const Teacher = require('../models/Teacher');
+const validate = require('../middleware/validate');
+const { asyncHandler } = require('../middleware/error');
 const router = express.Router();
 
+const STYLES = ['kpop', 'chinese', 'hiphop', 'contemporary', 'other'];
+
 // GET /api/classes
-router.get('/', async (req, res) => {
-  try {
-    const { style } = req.query;
+router.get(
+  '/',
+  [query('style').optional().isIn(STYLES)],
+  validate,
+  asyncHandler(async (req, res) => {
     const filter = { active: true };
-    if (style) filter.style = style;
+    if (req.query.style) filter.style = req.query.style;
     const classes = await Class.find(filter).populate('teacher');
     res.json(classes);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  })
+);
+
+// GET /api/classes/teachers/all
+router.get(
+  '/teachers/all',
+  asyncHandler(async (req, res) => {
+    const teachers = await Teacher.find().populate('classes');
+    res.json(teachers);
+  })
+);
 
 // GET /api/classes/:id
-router.get('/:id', async (req, res) => {
-  try {
+router.get(
+  '/:id',
+  [param('id').custom((v) => mongoose.isValidObjectId(v))],
+  validate,
+  asyncHandler(async (req, res) => {
     const danceClass = await Class.findById(req.params.id).populate('teacher');
     if (!danceClass) return res.status(404).json({ error: 'Class not found' });
     res.json(danceClass);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/teachers
-router.get('/teachers/all', async (req, res) => {
-  try {
-    const teachers = await Teacher.find().populate('classes');
-    res.json(teachers);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  })
+);
 
 module.exports = router;

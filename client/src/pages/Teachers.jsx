@@ -8,33 +8,49 @@ const FALLBACK_TEACHERS = [
 ];
 
 export default function Teachers() {
-  const [teachers, setTeachers] = useState(FALLBACK_TEACHERS);
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     api.get('/classes/teachers/all')
-      .then(({ data }) => { if (data.length) setTeachers(data); })
-      .catch(() => {});
+      .then(({ data }) => {
+        if (cancelled) return;
+        setTeachers(data.length ? data : FALLBACK_TEACHERS);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.response?.data?.error || 'Could not load teachers');
+        setTeachers(FALLBACK_TEACHERS);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   return (
     <section className="section">
       <div className="container">
         <h2 className="section-title">Our Instructors</h2>
-        <div className="grid grid-3">
-          {teachers.map((t) => (
-            <div className="card teacher-card" key={t._id}>
-              <img
-                src={t.photo || `https://placehold.co/160x160/1a1a2e/e91e63?text=${t.name.charAt(0)}`}
-                alt={t.name}
-              />
-              <h3>{t.name}</h3>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>{t.bio}</p>
-              <div className="teacher-specialties">
-                {t.specialties.map((s) => <span className="tag" key={s}>{s}</span>)}
+        {loading && <p style={{ textAlign: 'center' }}>Loading...</p>}
+        {error && <p style={{ textAlign: 'center', color: '#b00020' }}>{error}</p>}
+        {!loading && (
+          <div className="grid grid-3">
+            {teachers.map((t) => (
+              <div className="card teacher-card" key={t._id}>
+                <img
+                  src={t.photo || `https://placehold.co/180x180/f5f5f5/000000?text=${t.name.charAt(0)}`}
+                  alt={t.name}
+                />
+                <h3>{t.name}</h3>
+                <p style={{ marginBottom: 12 }}>{t.bio}</p>
+                <div className="teacher-specialties">
+                  {t.specialties.map((s) => <span className="tag" key={s}>{s}</span>)}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

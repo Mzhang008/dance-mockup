@@ -74,12 +74,13 @@ function LoginForm() {
 
 function SquarePaymentForm({ selectedClass, onSuccess, onCancel }) {
   const cardRef = useRef(null);
-  const [card, setCard] = useState(null);
+  const idempotencyKeyRef = useRef(crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
+    let cancelled = false;
     async function initSquare() {
       if (!window.Square) {
         setError('Square SDK failed to load');
@@ -92,31 +93,39 @@ function SquarePaymentForm({ selectedClass, onSuccess, onCancel }) {
         );
         const cardInstance = await payments.card();
         await cardInstance.attach('#square-card-container');
-        if (mounted) setCard(cardInstance);
+        if (cancelled) {
+          cardInstance.destroy();
+          return;
+        }
+        cardRef.current = cardInstance;
+        setReady(true);
       } catch (err) {
-        setError(err.message);
+        if (!cancelled) setError(err.message);
       }
     }
     initSquare();
     return () => {
-      mounted = false;
-      if (card) card.destroy();
+      cancelled = true;
+      if (cardRef.current) {
+        cardRef.current.destroy();
+        cardRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePay = async () => {
-    if (!card) return;
+    if (!cardRef.current || processing) return;
     setProcessing(true);
     setError('');
     try {
-      const result = await card.tokenize();
+      const result = await cardRef.current.tokenize();
       if (result.status !== 'OK') {
         throw new Error(result.errors?.[0]?.message || 'Tokenization failed');
       }
       const { data } = await api.post('/payments/process-payment', {
         sourceId: result.token,
         classId: selectedClass._id,
+        idempotencyKey: idempotencyKeyRef.current,
       });
       onSuccess(data);
     } catch (err) {
@@ -132,13 +141,13 @@ function SquarePaymentForm({ selectedClass, onSuccess, onCancel }) {
       <p style={{ marginBottom: 32, fontSize: '0.9375rem' }}>
         ${selectedClass.price.toFixed(2)} USD
       </p>
-      <div id="square-card-container" ref={cardRef}></div>
+      <div id="square-card-container"></div>
       {error && <p className="payment-error">{error}</p>}
       <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
         <button className="btn btn-outline" onClick={onCancel} disabled={processing}>
           Cancel
         </button>
-        <button className="btn btn-primary" onClick={handlePay} disabled={processing || !card} style={{ flex: 1 }}>
+        <button className="btn btn-primary" onClick={handlePay} disabled={processing || !ready} style={{ flex: 1 }}>
           {processing ? 'Processing...' : 'Pay Now'}
         </button>
       </div>
