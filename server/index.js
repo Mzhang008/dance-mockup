@@ -70,7 +70,7 @@ let server;
 
 const start = async () => {
   await connectDB();
-  server = app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+  server = app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
 };
 
 const shutdown = (signal) => async () => {
