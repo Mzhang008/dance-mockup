@@ -35,33 +35,38 @@ export default function Schedule() {
   }, []);
 
   return (
-    <section className="section">
-      <div className="container">
-        <h2 className="section-title">Class Schedule</h2>
-        <p style={{ textAlign: 'center', color: 'var(--gray-500)', marginBottom: 40 }}>
-          Synced with Google Calendar — always up to date
-        </p>
-        {loading && <p style={{ textAlign: 'center' }}>Loading...</p>}
-        {error && <p style={{ textAlign: 'center', color: '#b00020' }}>{error}</p>}
-        {!loading && (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {events.map((evt) => (
-              <div className="schedule-event" key={evt.id}>
-                <div className="schedule-event-time">
-                  <div>{formatTime(evt.start)}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: 4 }}>
-                    to {new Date(evt.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+    <>
+      <div className="page-header">
+        <div className="container">
+          <p className="section-label">Plan Your Visit</p>
+          <h1>Class Schedule</h1>
+          <p>Synced with Google Calendar — always up to date.</p>
+        </div>
+      </div>
+      <section className="section">
+        <div className="container">
+          {loading && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</p>}
+          {error && <p style={{ textAlign: 'center', color: '#ef5350' }}>{error}</p>}
+          {!loading && (
+            <div>
+              {events.map((evt) => (
+                <div className="schedule-event" key={evt.id}>
+                  <div className="schedule-event-time">
+                    <div>{formatTime(evt.start)}</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 6, letterSpacing: '0.05em' }}>
+                      to {new Date(evt.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    </div>
+                  </div>
+                  <div>
+                    <h3>{evt.title}</h3>
+                    <p style={{ fontSize: '0.875rem' }}>{evt.description}</p>
                   </div>
                 </div>
-                <div>
-                  <h3>{evt.title}</h3>
-                  <p>{evt.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </>
   );
 }

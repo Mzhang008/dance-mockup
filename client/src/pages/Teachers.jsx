@@ -29,29 +29,38 @@ export default function Teachers() {
   }, []);
 
   return (
-    <section className="section">
-      <div className="container">
-        <h2 className="section-title">Our Instructors</h2>
-        {loading && <p style={{ textAlign: 'center' }}>Loading...</p>}
-        {error && <p style={{ textAlign: 'center', color: '#b00020' }}>{error}</p>}
-        {!loading && (
-          <div className="grid grid-3">
-            {teachers.map((t) => (
-              <div className="card teacher-card" key={t._id}>
-                <img
-                  src={t.photo || `https://placehold.co/180x180/f5f5f5/000000?text=${t.name.charAt(0)}`}
-                  alt={t.name}
-                />
-                <h3>{t.name}</h3>
-                <p style={{ marginBottom: 12 }}>{t.bio}</p>
-                <div className="teacher-specialties">
-                  {t.specialties.map((s) => <span className="tag" key={s}>{s}</span>)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+    <>
+      <div className="page-header">
+        <div className="container">
+          <p className="section-label">Our Team</p>
+          <h1>Instructors</h1>
+          <p>Industry professionals with a passion for teaching.</p>
+        </div>
       </div>
-    </section>
+      <section className="section">
+        <div className="container">
+          {loading && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</p>}
+          {error && <p style={{ textAlign: 'center', color: '#ef5350' }}>{error}</p>}
+          {!loading && (
+            <div className="grid grid-3">
+              {teachers.map((t) => (
+                <div className="teacher-card" key={t._id}>
+                  <img
+                    src={t.photo || `https://placehold.co/200x200/1a1a1a/c9a96e?text=${t.name.charAt(0)}`}
+                    alt={t.name}
+                  />
+                  <h3>{t.name}</h3>
+                  <div className="teacher-role">Instructor</div>
+                  <p style={{ fontSize: '0.875rem', lineHeight: 1.8 }}>{t.bio}</p>
+                  <div className="teacher-specialties">
+                    {t.specialties.map((s) => <span className="tag" key={s}>{s}</span>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </>
   );
 }

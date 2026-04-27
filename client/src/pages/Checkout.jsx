@@ -26,6 +26,7 @@ function SignupForm() {
           <label>{field}</label>
           <input
             type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'}
+            placeholder={field === 'phone' ? '(optional)' : ''}
             value={form[field]}
             onChange={(e) => setForm({ ...form, [field]: e.target.value })}
             required={field !== 'phone'}
@@ -54,7 +55,7 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <h3 style={{ marginBottom: 32 }}>Login</h3>
+      <h3 style={{ marginBottom: 32 }}>Welcome Back</h3>
       {error && <p className="payment-error">{error}</p>}
       {['email', 'password'].map((field) => (
         <div className="form-group" key={field}>
@@ -138,7 +139,7 @@ function SquarePaymentForm({ selectedClass, onSuccess, onCancel }) {
   return (
     <div className="payment-wrap">
       <h3>Payment — {selectedClass.title}</h3>
-      <p style={{ marginBottom: 32, fontSize: '0.9375rem' }}>
+      <p style={{ marginBottom: 32, fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>
         ${selectedClass.price.toFixed(2)} USD
       </p>
       <div id="square-card-container"></div>
@@ -199,33 +200,39 @@ function ClassList({ onSelect, onRedeemSuccess }) {
     <div>
       <h3 style={{ marginBottom: 16 }}>Available Classes</h3>
       {usablePackages.length > 0 && (
-        <p style={{ marginBottom: 24, fontSize: '0.875rem', color: 'var(--gray-700)' }}>
+        <p style={{ marginBottom: 24, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           You have {usablePackages.length} active package{usablePackages.length > 1 ? 's' : ''} — redeem instead of paying.
         </p>
       )}
       {error && <p className="payment-error">{error}</p>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {classes.map((c) => (
-          <div key={c._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
+          <div key={c._id} style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '28px 0',
+            borderBottom: '1px solid var(--border)',
+          }}>
             <div>
-              <h4 style={{ fontSize: '1.125rem', marginBottom: 8 }}>{c.title}</h4>
+              <h4 style={{ fontFamily: 'var(--serif)', fontSize: '1.25rem', fontWeight: 400, marginBottom: 8 }}>{c.title}</h4>
               <span className="tag">{c.style}</span>
-              <span style={{ marginLeft: 12, fontSize: '0.875rem', color: 'var(--gray-500)' }}>
+              <span style={{ marginLeft: 12, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 {c.teacher?.name}
               </span>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: 8 }}>
+              <div style={{ fontSize: '1.375rem', fontFamily: 'var(--serif)', fontWeight: 300, color: 'var(--accent)', marginBottom: 12 }}>
                 ${c.price}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <button className="btn btn-primary" style={{ padding: '10px 20px', fontSize: '0.75rem' }} onClick={() => onSelect(c)}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button className="btn btn-primary" style={{ padding: '10px 24px', fontSize: '0.625rem' }} onClick={() => onSelect(c)}>
                   Pay
                 </button>
                 {usablePackages.length > 0 && (
                   <button
                     className="btn btn-outline"
-                    style={{ padding: '10px 20px', fontSize: '0.75rem' }}
+                    style={{ padding: '10px 24px', fontSize: '0.625rem' }}
                     onClick={() => handleRedeem(c)}
                     disabled={redeemingId === c._id}
                   >
@@ -249,67 +256,92 @@ export default function Checkout() {
 
   if (success) {
     return (
-      <section className="section">
-        <div className="container" style={{ maxWidth: 640, textAlign: 'center' }}>
-          <h2 className="section-title">Payment Complete</h2>
-          <p style={{ marginBottom: 40 }}>
-            Your booking is confirmed. See you in class.
-          </p>
-          <button className="btn btn-outline" onClick={() => { setSuccess(null); setSelectedClass(null); }}>
-            Book Another
-          </button>
+      <>
+        <div className="page-header">
+          <div className="container">
+            <p className="section-label">Confirmed</p>
+            <h1>Booking Complete</h1>
+          </div>
         </div>
-      </section>
+        <section className="section" style={{ textAlign: 'center' }}>
+          <div className="container" style={{ maxWidth: 600 }}>
+            <p style={{ marginBottom: 48, fontSize: '1.125rem', color: 'var(--text-secondary)' }}>
+              Your booking is confirmed. See you in class.
+            </p>
+            <button className="btn btn-outline" onClick={() => { setSuccess(null); setSelectedClass(null); }}>
+              Book Another Class
+            </button>
+          </div>
+        </section>
+      </>
     );
   }
 
   return (
-    <section className="section">
-      <div className="container">
-        <h2 className="section-title">Book a Class</h2>
-        <div className="grid grid-2">
-          <div>
-            {!user ? (
-              <div className="card">
-                {isLogin ? <LoginForm /> : <SignupForm />}
-                <p style={{ textAlign: 'center', marginTop: 24, fontSize: '0.875rem' }}>
-                  {isLogin ? "Don't have an account? " : 'Already have an account? '}
-                  <button
-                    onClick={() => setIsLogin(!isLogin)}
-                    style={{ background: 'none', border: 'none', color: 'var(--black)', cursor: 'pointer', fontWeight: 500, textDecoration: 'underline' }}
-                  >
-                    {isLogin ? 'Sign Up' : 'Login'}
-                  </button>
-                </p>
-              </div>
-            ) : selectedClass ? (
-              <div className="card">
-                <SquarePaymentForm
-                  selectedClass={selectedClass}
-                  onSuccess={setSuccess}
-                  onCancel={() => setSelectedClass(null)}
-                />
-              </div>
-            ) : (
-              <div className="card">
-                <ClassList
-                  onSelect={setSelectedClass}
-                  onRedeemSuccess={() => setSuccess({ redeemed: true })}
-                />
-              </div>
-            )}
-          </div>
-          <div className="card">
-            <h3 style={{ marginBottom: 32 }}>How It Works</h3>
-            <ol style={{ paddingLeft: 20, lineHeight: 2.2 }}>
-              <li>Create an account or log in</li>
-              <li>Browse available classes</li>
-              <li>Enter card details via Square</li>
-              <li>Show up and dance</li>
-            </ol>
-          </div>
+    <>
+      <div className="page-header">
+        <div className="container">
+          <p className="section-label">Enroll</p>
+          <h1>Book a Class</h1>
         </div>
       </div>
-    </section>
+      <section className="section">
+        <div className="container">
+          <div className="grid grid-2" style={{ gap: 64 }}>
+            <div>
+              {!user ? (
+                <div className="card">
+                  {isLogin ? <LoginForm /> : <SignupForm />}
+                  <p style={{ textAlign: 'center', marginTop: 24, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {isLogin ? "Don't have an account? " : 'Already have an account? '}
+                    <button
+                      onClick={() => setIsLogin(!isLogin)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--accent)',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
+                        fontSize: 'inherit',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '3px',
+                      }}
+                    >
+                      {isLogin ? 'Sign Up' : 'Login'}
+                    </button>
+                  </p>
+                </div>
+              ) : selectedClass ? (
+                <div className="card">
+                  <SquarePaymentForm
+                    selectedClass={selectedClass}
+                    onSuccess={setSuccess}
+                    onCancel={() => setSelectedClass(null)}
+                  />
+                </div>
+              ) : (
+                <div className="card">
+                  <ClassList
+                    onSelect={setSelectedClass}
+                    onRedeemSuccess={() => setSuccess({ redeemed: true })}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="card" style={{ alignSelf: 'flex-start' }}>
+              <p className="section-label" style={{ textAlign: 'left', marginBottom: 20 }}>Process</p>
+              <h3 style={{ marginBottom: 32, fontWeight: 300 }}>How It Works</h3>
+              <ol style={{ paddingLeft: 20, lineHeight: 2.4, color: 'var(--text-secondary)' }}>
+                <li>Create an account or log in</li>
+                <li>Browse available classes</li>
+                <li>Enter card details via Square</li>
+                <li>Show up and dance</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
