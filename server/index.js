@@ -8,6 +8,7 @@ const pinoHttp = require('pino-http');
 const mongoose = require('mongoose');
 
 const connectDB = require('./config/db');
+const autoSeed = require('./config/autoSeed');
 const logger = require('./config/logger');
 const { errorHandler, notFoundHandler } = require('./middleware/error');
 const { authLimiter, paymentLimiter, apiLimiter } = require('./middleware/rateLimit');
@@ -70,6 +71,7 @@ let server;
 
 const start = async () => {
   await connectDB();
+  await autoSeed();
   server = app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
 };
 
