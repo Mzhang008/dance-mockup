@@ -156,6 +156,10 @@ function SquarePaymentForm({ selectedClass, onSuccess, onCancel }) {
   );
 }
 
+const FALLBACK_CLASSES = [
+  { _id: 'drop-in', title: 'Drop-In Class', style: 'kpop', price: 15, capacity: 30, enrolled: 0, description: 'Single drop-in class. Any style, any session.', teacher: null },
+];
+
 function ClassList({ onSelect, onRedeemSuccess }) {
   const [classes, setClasses] = useState([]);
   const [packages, setPackages] = useState([]);
@@ -163,7 +167,9 @@ function ClassList({ onSelect, onRedeemSuccess }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/classes').then(({ data }) => setClasses(data)).catch(() => {});
+    api.get('/classes')
+      .then(({ data }) => setClasses(data.length ? data : FALLBACK_CLASSES))
+      .catch(() => setClasses(FALLBACK_CLASSES));
     api.get('/packages/me').then(({ data }) => setPackages(data)).catch(() => {});
   }, []);
 

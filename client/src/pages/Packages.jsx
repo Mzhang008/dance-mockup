@@ -142,6 +142,11 @@ function MyPackages() {
   );
 }
 
+const FALLBACK_PACKAGES = [
+  { _id: 'single-class', name: 'Single Class', description: 'One drop-in class. Any style, any session.', type: 'punchcard', price: 15, credits: 1, active: true },
+  { _id: '5-class-pack', name: '5-Class Pack', description: 'Five class credits. Use anytime, any style. Never expires.', type: 'punchcard', price: 45, credits: 5, active: true },
+];
+
 export default function Packages() {
   const { user } = useAuth();
   const [packages, setPackages] = useState([]);
@@ -153,8 +158,8 @@ export default function Packages() {
   useEffect(() => {
     let cancelled = false;
     api.get('/packages')
-      .then(({ data }) => { if (!cancelled) setPackages(data); })
-      .catch((err) => { if (!cancelled) setError(err.response?.data?.error || 'Failed to load'); })
+      .then(({ data }) => { if (!cancelled) setPackages(data.length ? data : FALLBACK_PACKAGES); })
+      .catch(() => { if (!cancelled) setPackages(FALLBACK_PACKAGES); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
